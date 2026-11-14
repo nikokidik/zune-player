@@ -1,26 +1,34 @@
-name: Build APK
-on:
-  push:
-  workflow_dispatch:
-permissions:
-  contents: write
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: unzip -q zune-android.zip
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
-      - run: gradle assembleDebug --no-daemon
-        working-directory: zune-android
+
+      - name: Build APK
+        run: |
+          PROJECT_DIR=$(dirname "$(find extracted \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)")
+
+          if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "extracted" ]; then
+            echo "Gradle project not found!"
+            exit 1
+          fi
+
+          cd "$PROJECT_DIR"
+          gradle assembleRelease --no-daemon
+
+      - name: Find APK
+        run: |
+          APK=$(find extracted -path '*/build/outputs/apk/release/*.apk' -type f | head -n 1)
+
+          if [ -z "$APK" ]; then
+            echo "Release APK not found!"
+            find extracted -type f
+            exit 1
+          fi
+
+          mkdir -p release
+          cp "$APK" release/ZunePlayer.apk
+
       - name: Publish APK
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "build-${{ github.run_number }}" zune-android/app/build/outputs/apk/debug/ZunePlayer.apk --title "Zune build ${{ github.run_number }}" --notes "ne debug build"
+          gh release create "build-${{ github.run_number }}" \
+            release/ZunePlayer.apk \
+            --title "Zune release ${{ github.run_number }}" \
+            --notes "Zune Android release build"
