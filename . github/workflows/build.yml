@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: unzip -q zune-android(1).zip
+      - run: unzip -q zune-android.zip
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
